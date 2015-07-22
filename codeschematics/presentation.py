@@ -1,4 +1,5 @@
 # This is written to Python 3 standards (at least 3.2, and possibly 3.3 or 3.4, I'm not really sure)
+# Note: tab depth is 5, as a personal preference
 
 
 # This is the second half of this package; it takes a dictionary whose keys are function names,
@@ -51,11 +52,15 @@ class Presenter:
         These filtered Presenters have all the same "view" methods as the "full" original,
         and calling them will produce the requested view."""
 
+     def _copy(self, other):
+          self._data = other._data.copy()
+          self._tree = other._tree # TODO. HOW THE FUCK DO I COPY A TREE #TODO: experiment with copy.deepcopy
+          self._func_to_node = other._func_to_node.copy()
+
 
      def __init__(self, data):
           if isinstance(data, type(self)):
-               self._tree = data._tree
-               self._func_to_node = data._func_to_node
+               self._copy(other)
                return
 
           # For development at least, type check the input
@@ -68,6 +73,7 @@ class Presenter:
                if list(set(calls)) != calls:
                     raise ValueError("function {} has duplicate subcall entries".format(func))
 
+          self._data = data
           self._make_tree(data)
 
 
@@ -108,38 +114,94 @@ class Presenter:
 
           # We use a "top-er level" root node to host all entries to the tree, if more than one
           if len(parentless) > 1:
-               tree = Tree()
+               self._tree = Tree()
                for func in parentless:
-                    tree[func] = func_to_node[func]
+                    self._tree[func] = func_to_node[func]
           else:
-               tree = func_to_node[parentless.pop()]
-          self._tree = tree
+               self._tree = func_to_node[parentless.pop()]
           self._func_to_node = _func_to_node
 
 
+     ###########################################################################
+     # The view methods. For now, we only have a plain text representation.
+
      def _to_plain_text(self, func, chain=None, prefix='', indent='      '):
+          # A simple recursive depth first traversal of the tree. Chain records
+          # the call chain for duplicate/recursion detection.
           if chain is None:
                chain = []
-          if func not in data.dict.keys():
+          if func not in self._data.keys():
                return prefix + func + '()'
           # else:
           out = prefix + func + '():\n'
           strs = []
-          for i, call in enumerate(data.dict[func]):
+          for call in self._func_to_node[func]:
                if call in chain:
                     # Allow exactly one duplicate as the tail of the chain
                     strs.append(prefix + indent + call + '()')
                else: # no duplicates, continue recursing
                     chain.append(call)
-                    s = dumps(data, call, ignores, chain, prefix+indent)
-                    if s: # Don't add an entry (i.e. newline) for empty strings
+                    s = self._to_plain_text(call, chain, prefix+indent)
+                    if s: # Don't add an entry (i.e. extra newline) for leaf nodes
                          strs.append(s)
                     chain.pop()
           return out + '\n'.join(strs)
 
 
-     def to_plain_text(self, chain=None, prefix='', indent='      '):
+     def to_plain_text(self):
           """This renders the Presenter object in a simple plain text tree,
              with suitable indentation. It's essentially a "pretty printer"."""
 
-          # 
+          # The helper method starts with a parent node and traverses the tree depth first
+          return '\n'.join(self._to_plain_text(call) for call in self._tree)
+
+
+     __str__ = to_plain_text
+
+
+
+     ###########################################################################
+     # Now the filter methods. They return new Presenter instances, suitably
+     # modified.
+
+     def default_filter(self):
+          """This creates a copy of this Presenter instance, except all functions
+             lacking a "definition" are deleted from the call tree."""
+
+          result = type(self)(self) # __init__ recognizes its own instances, and copies
+                                    # all `self` data to `result` (leaving self intact)
+
+          all_funcs     = set(result._func_to_node.keys())
+          defined_funcs = set(result._data.keys())
+          to_be_deleted = all_funcs - defined_funcs
+
+          for func in to_be_deleted:
+               try:
+                    del result._func_to_node[func]
+               except KeyError:
+                    pass
+
+          # Simpe O(n*m) search and destory algorithm
+          # Is it worth it to have the Tree object track its parents as well as
+          # its children?
+          for node in result._func_to_node.values():
+               for func in to_be_deleted:
+                    try:
+                         del node[func]
+                    except KeyError:
+                         pass
+
+          return result
+
+
+
+
+
+
+
+
+
+
+
+
+
