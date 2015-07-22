@@ -181,12 +181,12 @@ class Presenter:
           return out + '\n'.join(strs)
 
 
-     def to_plain_text(self):
+     def to_plain_text(self, indent='      '):
           """This renders the Presenter object in a simple plain text tree,
              with suitable indentation. It's essentially a "pretty printer"."""
 
           # The helper method starts with a parent node and traverses the tree depth first
-          return '\n'.join(self._to_plain_text(call) for call in self._tree)
+          return '\n'.join(self._to_plain_text(call, indent=indent) for call in self._tree)
 
 
      __str__ = to_plain_text
