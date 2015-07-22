@@ -75,7 +75,7 @@ class Presenter:
 
 
      def __init__(self, data):
-          if isinstance(data, type(self)):
+          if isinstance(data, self.__class__):
                self._copy(data)
                return
 
@@ -184,8 +184,8 @@ class Presenter:
           """This creates a copy of this Presenter instance, except all functions
              lacking a "definition" are deleted from the call tree."""
 
-          result = type(self)(self) # __init__ recognizes its own instances, and copies
-                                    # all `self` data to `result` (leaving self intact)
+          result = self.__class__(self) # __init__ recognizes its own instances, and copies
+                                        # all `self` data to `result` (leaving self intact)
 
           all_funcs     = set(result._func_to_node.keys())
           defined_funcs = set(result._data.keys())
