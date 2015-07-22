@@ -105,8 +105,8 @@ class Presenter:
                for call in calls:
                     if not isinstance(call, str):
                          raise TypeError("function body calls should be strings")
-               if list(set(calls)) != calls:
-                    raise ValueError("function {} has duplicate subcall entries".format(func))
+                    if calls.count(call) > 1:
+                         raise ValueError("function {} has duplicate entries for {}".format(func, call))
 
           self._data = data
           self._make_tree()
