@@ -1,4 +1,22 @@
 #! /usr/bin/env python
+# Note: tab depth is 5, as a personal preference
+
+
+#    Copyright (C) 2014-2015 Bill Winslow
+#
+#    This module is a part of the CodeSchematics package.
+#
+#    This program is libre software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+#    See the LICENSE file for more details.
+
 
 from __future__ import print_function
 import ast
