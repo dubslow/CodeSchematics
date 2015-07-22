@@ -82,7 +82,11 @@ class Presenter:
      # old other._func_to_node
      def _recreate_func_to_node(self, node):
           for call, child in node.items():
-               self._func_to_node[call] = child
+               if call in self._func_to_node:
+                    if child is not self._func_to_node[call]:
+                         raise ValueError('call tree has duplicate nodes for {}'.format(call))
+               else:
+                    self._func_to_node[call] = child
                if child.keys():
                     self._recreate_func_to_node(child)
 
@@ -105,7 +109,7 @@ class Presenter:
                     raise ValueError("function {} has duplicate subcall entries".format(func))
 
           self._data = data
-          self._make_tree(data)
+          self._make_tree()
 
 
      def _make_tree(self):
@@ -124,13 +128,13 @@ class Presenter:
           # We process child function calls by 1) adding them to the tree (by merely accessing
           # node[child], since Tree default constructs nodes) and 2) adding the newly created
           # node to our mapping
-          for func, calls in data.items():
+          for func, calls in self._data.items():
 
                if func in func_to_node:       # This function already has a node (i.e. is
                     node = func_to_node[func] # a child of some other function)
                else: # This function doesn't yet exist in the tree
                     parentless.add(func)
-                    func_to_node[func] = node = Tree()
+                    func_to_node[func] = node = _Tree()
 
                for call in calls: # add call as a child of node
                     # This is a pretty mind bending ~~four~~ five lines of code
@@ -144,7 +148,7 @@ class Presenter:
                          func_to_node[call] = node[call]          
 
           # We use a root node to host all top level parents
-          self._tree = Tree()
+          self._tree = _Tree()
           for func in parentless:
                self._tree[func] = func_to_node[func]
 
