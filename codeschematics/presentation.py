@@ -87,8 +87,8 @@ class Presenter:
                          raise ValueError('call tree has duplicate nodes for {}'.format(call))
                else:
                     self._func_to_node[call] = child
-               if child.keys():
-                    self._recreate_func_to_node(child)
+                    if child.keys():
+                         self._recreate_func_to_node(child)
 
 
      ###########################################################################
