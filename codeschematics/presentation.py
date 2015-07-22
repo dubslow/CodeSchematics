@@ -76,7 +76,7 @@ class Presenter:
 
      def __init__(self, data):
           if isinstance(data, type(self)):
-               self._copy(other)
+               self._copy(data)
                return
 
           # For development at least, type check the input
