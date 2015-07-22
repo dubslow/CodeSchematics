@@ -32,9 +32,10 @@
 # First some private data structures. The order of function calls is preserved,
 # but we also need defaultdict behavior to implement the tree.
 
-from collections import OrderedDict
+from collections import OrderedDict as _OrderedDict
+from copy import deepcopy as _deepcopy
 
-class _OrderedDefaultDict(OrderedDict):
+class _OrderedDefaultDict(_OrderedDict):
      # To create an ordered default dict, one cannot merely subclass both
      # Rather, subclass the hard one and reimplement the easy one
      def __init__(self, default_factory=None, *a, **kw):
@@ -68,11 +69,25 @@ class Presenter:
         These filtered Presenters have all the same "view" methods as the "full" original,
         and calling them will produce the requested view."""
 
+
+     ###########################################################################
+     # Used for creating copies for the filter methods
      def _copy(self, other):
           self._data = other._data.copy()
-          self._tree = other._tree # TODO. HOW THE FUCK DO I COPY A TREE #TODO: experiment with copy.deepcopy
-          self._func_to_node = other._func_to_node.copy()
+          self._tree = _deepcopy(other._tree)
+          self._func_to_node = {}
+          self._recreate_func_to_node(self._tree)
 
+     # When we deep copy the tree, we're making all-new nodes, invalidating the
+     # old other._func_to_node
+     def _recreate_func_to_node(self, node):
+          for call, child in node.items():
+               self._func_to_node[call] = child
+               if child.keys():
+                    self._recreate_func_to_node(child)
+
+
+     ###########################################################################
 
      def __init__(self, data):
           if isinstance(data, self.__class__):
@@ -82,7 +97,7 @@ class Presenter:
           # For development at least, type check the input
           for func, calls in data.items():
                if not isinstance(func, str):
-                    raise TypeError("function names should be strings)
+                    raise TypeError("function names should be strings")
                for call in calls:
                     if not isinstance(call, str):
                          raise TypeError("function body calls should be strings")
@@ -108,7 +123,7 @@ class Presenter:
 
           # We process child function calls by 1) adding them to the tree (by merely accessing
           # node[child], since Tree default constructs nodes) and 2) adding the newly created
-          # node to our local/temporary mapping
+          # node to our mapping
           for func, calls in data.items():
 
                if func in func_to_node:       # This function already has a node (i.e. is
@@ -128,14 +143,12 @@ class Presenter:
                     else:
                          func_to_node[call] = node[call]          
 
-          # We use a "top-er level" root node to host all entries to the tree, if more than one
-          if len(parentless) > 1:
-               self._tree = Tree()
-               for func in parentless:
-                    self._tree[func] = func_to_node[func]
-          else:
-               self._tree = func_to_node[parentless.pop()]
-          self._func_to_node = _func_to_node
+          # We use a root node to host all top level parents
+          self._tree = Tree()
+          for func in parentless:
+               self._tree[func] = func_to_node[func]
+
+          self._func_to_node = func_to_node
 
 
      ###########################################################################
@@ -175,7 +188,6 @@ class Presenter:
      __str__ = to_plain_text
 
 
-
      ###########################################################################
      # Now the filter methods. They return new Presenter instances, suitably
      # modified.
@@ -208,16 +220,4 @@ class Presenter:
                          pass
 
           return result
-
-
-
-
-
-
-
-
-
-
-
-
 
