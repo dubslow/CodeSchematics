@@ -1,4 +1,4 @@
-# This is written to Python 3 standards (at least 3.2, and possibly 3.3 or 3.4, I'm not really sure)
+# This is written to Python 3.3 standards (may use 3.4 features, I haven't kept track)
 # Note: tab depth is 5, as a personal preference
 
 
@@ -29,29 +29,44 @@
 
 
 ################################################################################
-# First some private data structures. The order of function calls is preserved,
-# but we also need defaultdict behavior to implement the tree.
+# First the tree data structure. The order of function calls is preserved
 
 from collections import OrderedDict as _OrderedDict
 from copy import deepcopy as _deepcopy
 
-class _OrderedDefaultDict(_OrderedDict):
-     # To create an ordered default dict, one cannot merely subclass both
-     # Rather, subclass the hard one and reimplement the easy one
-     def __init__(self, default_factory=None, *a, **kw):
-          if (default_factory is not None and not callable(default_factory)):
-               raise TypeError('first argument must be callable')
-          super(self.__class__, self).__init__(self, *a, **kw)
-          self.default_factory = default_factory
 
-     def __missing__ (self, key):
-          if self.default_factory is None:
-               raise KeyError(key)
-          self[key] = default = self.default_factory()
-          return default
+class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > implicit
+     '''An arbitrary "tree" structure, where "tree" is used loosely. It's halfway
+     between a directional graph and an actual tree... arbitrary structure, including
+     even loops. All values inserted to the dictionary must also be _Tree()s. Also
+     this is a "doubly linked tree", where each node also tracks its parents'''
 
+     def __init__(self, name):
+          self._parents = _OrderedDict()
+          self._name = name
 
-def _Tree(): return _OrderedDefaultDict(_Tree) # The classic "auto-vivification"
+     def __setitem__(self, key, value):
+          if not isinstance(value, self.__class__):
+               raise TypeError("{} child values can only be other instances of {}".format(*([self.__class__]*2))
+          super().__setitem__(key, value)
+          value._parents[self._name] = self
+
+     @property
+     def name(self):
+          return self._name
+
+     def parents(self):
+          return self._parents.items()
+
+     def destroy(self):
+          # Destroy our childrens' references to us
+          for child in self.values():
+               del child._parents[self._name]
+          # Destroy our parents' references to us
+          for parent in self._parents.values():
+               del parent[self._name]
+          self._parents.clear()
+          self.clear()
 
 
 ################################################################################
@@ -134,25 +149,39 @@ class Presenter:
                     node = func_to_node[func] # a child of some other function)
                else: # This function doesn't yet exist in the tree
                     parentless.add(func)
-                    func_to_node[func] = node = _Tree()
+                    func_to_node[func] = node = _Tree(func)
 
-               for call in calls: # add call as a child of node
-                    # This is a pretty mind bending ~~four~~ five lines of code
-                    # If the node for this child call already exists, store it in this node
-                    # Otherwise, auto-create it by accessing node[call], and store the new
-                    # node in func_to_node
+               for call in calls:
+                    # add call as a child of node
                     if call in func_to_node:
                          node[call] = func_to_node[call]
                          parentless.discard(call) # Silent if call not in parentless
+                         # If this call is part of a standalone loop, the entire loop will
+                         # eventually be marked as parented, and thus not accessible from
+                         # the root node. Fixed below
                     else:
-                         func_to_node[call] = node[call]          
+                         func_to_node[call] = node[call] = _Tree(call)
 
           # We use a root node to host all top level parents
-          self._tree = _Tree()
+          self._tree = _Tree(None) # Empty name
           for func in parentless:
                self._tree[func] = func_to_node[func]
 
+          # As noted above, standalone loops would be marked as parented yet not accessible
+          # Manually verify now, by traversing everything and seeing what's missing
+          visited = set(node.name for node in self._tree_iter(self._tree))
+          missing = set(func_to_node.keys()) - visited
+          # The hard part is figuring how many standalone loops there are in missing, and
+          # which nodes should be the highest level parents
+          # TODO
+
           self._func_to_node = func_to_node
+
+     def _tree_iter(self, node):
+          '''Depth first traversal of the underlying tree'''
+          yield node
+          for child in node.values():
+               yield from self._tree_iter(child)
 
 
      ###########################################################################
@@ -209,19 +238,11 @@ class Presenter:
 
           for func in to_be_deleted:
                try:
-                    del result._func_to_node[func]
+                    node = result._func_to_node.pop(func)
                except KeyError:
                     pass
-
-          # Simpe O(n*m) search and destory algorithm
-          # Is it worth it to have the Tree object track its parents as well as
-          # its children?
-          for node in result._func_to_node.values():
-               for func in to_be_deleted:
-                    try:
-                         del node[func]
-                    except KeyError:
-                         pass
+               else:
+                    node.destroy()
 
           return result
 
