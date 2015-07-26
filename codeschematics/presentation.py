@@ -228,21 +228,21 @@ class Presenter:
      def default_filter(self):
           """This creates a copy of this Presenter instance, except all functions
              lacking a "definition" are deleted from the call tree."""
+          out = self.__class__(self) # __init__ recognizes its own instances, and copies
+                                     # all `self` data to `out` (leaving self intact)
+          out._default_filter()
+          return out
 
-          result = self.__class__(self) # __init__ recognizes its own instances, and copies
-                                        # all `self` data to `result` (leaving self intact)
-
-          all_funcs     = set(result._func_to_node.keys())
-          defined_funcs = set(result._data.keys())
+     def _default_filter(self):
+          all_funcs     = set(self._func_to_node.keys())
+          defined_funcs = set(self._data.keys())
           to_be_deleted = all_funcs - defined_funcs
 
           for func in to_be_deleted:
                try:
-                    node = result._func_to_node.pop(func)
+                    node = self._func_to_node.pop(func)
                except KeyError:
                     pass
                else:
                     node.destroy()
-
-          return result
 
