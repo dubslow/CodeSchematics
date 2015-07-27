@@ -177,11 +177,16 @@ class Presenter:
 
           self._func_to_node = func_to_node
 
-     def _tree_iter(self, node):
-          '''Depth first traversal of the underlying tree'''
+     def _tree_iter(self, node, visited=None):
+          '''Depth first traversal of the underlying tree, only yields a given node once'''
+          # We assume that if visited is not None, then the current node is already in it
+          if visited is None:
+               visited = set(node)
           yield node
           for child in node.values():
-               yield from self._tree_iter(child)
+               if child not in visited:
+                    visited.add(child)
+                    yield from self._tree_iter(child, visited)
 
 
      ###########################################################################
