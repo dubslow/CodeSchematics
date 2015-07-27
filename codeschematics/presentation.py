@@ -167,15 +167,49 @@ class Presenter:
           for func in parentless:
                self._tree[func] = func_to_node[func]
 
-          # As noted above, standalone loops would be marked as parented yet not accessible
+          # As noted above, standalone loops would be marked as parented yet won't be accessible
           # Manually verify now, by traversing everything and seeing what's missing
-          visited = set(node.name for node in self._tree_iter(self._tree))
-          missing = set(func_to_node.keys()) - visited
+          visited = set(self._tree_iter(self._tree))
+          missing = set(func_to_node.values()) - visited
           # The hard part is figuring how many standalone loops there are in missing, and
           # which nodes should be the highest level parents
-          # TODO
+          while missing:
+               new_top_level = self._find_parent(missing.pop()) # set.pop() returns an arbitrary element
+               self._tree[new_top_level.name] = new_top_level
+               newly_in_tree = set(self._tree_iter(new_top_level))
+               missing -= newly_in_tree
 
           self._func_to_node = func_to_node
+
+
+     # Now some _make_tree helper methods
+
+     def _find_parent(self, node):
+          # _make_tree helper method: for a given node, finds its "farthest parent"
+          # The given node is assumed to be (as yet) independent of self._tree, as part
+          # of a standalone loop
+          # Since said loop may have children though, we can't assume that every node in
+          # the loop would make a suitable parent
+          self._max = 0
+          self._node = node
+          self._find_parent_(node)
+          node = self._node
+          del self._node
+          del self._max
+          return node
+
+     def _find_parent_(self, node, visited=None, cur=0):
+          # _find_parent recursive method: for a given node, finds its "farthest parent"
+          # We assume that if visited is not None, then the current node is already in it
+          if visited is None:
+               visited = set(node)
+          if cur > self._max:
+               self._max = cur
+               self._node = node
+          for _, parent in node.parents():
+               if parent not in visited:
+                    visited.add(parent)
+                    self._find_parent_(parent, visited, cur+1)
 
      def _tree_iter(self, node, visited=None):
           '''Depth first traversal of the underlying tree, only yields a given node once'''
