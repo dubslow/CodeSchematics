@@ -12,7 +12,7 @@ fname = argv[1]
 
 dic, nested = make_call_dict(fname) # Ignore the nested funcs retval =
 
-tree = Presenter(data)
+tree = Presenter(dic)
 
 fname = basename(fname) + '.svg'
 tree.to_svg(fname)

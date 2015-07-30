@@ -43,12 +43,13 @@ class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > impli
      this is a "doubly linked tree", where each node also tracks its parents'''
 
      def __init__(self, name):
+          super().__init__()
           self._parents = _OrderedDict()
           self._name = name
 
      def __setitem__(self, key, value):
           if not isinstance(value, self.__class__):
-               raise TypeError("{} child values can only be other instances of {}".format(*([self.__class__]*2))
+               raise TypeError("{} child values can only be other instances of {}".format(*([self.__class__]*2)))
           super().__setitem__(key, value)
           value._parents[self._name] = self
 
