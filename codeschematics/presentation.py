@@ -177,7 +177,7 @@ class Presenter:
 
           # As noted above, standalone loops would be marked as parented yet won't be accessible
           # Manually verify now, by traversing everything and seeing what's missing
-          visited = set(self._tree_iter(self._tree))
+          visited = set(self._tree_iter())
           missing = set(func_to_node.values()) - visited
           # The hard part is figuring how many standalone loops there are in missing, and
           # which nodes should be the highest level parents
@@ -219,8 +219,14 @@ class Presenter:
                     visited.add(parent)
                     self._find_parent_(parent, visited, cur+1)
 
-     def _tree_iter(self, node, visited=None):
+     def _tree_iter(self, node=None, visited=None):
           '''Depth first traversal of the underlying tree, only yields a given node once'''
+          if node is None: # If no node given, start from the top, being sure to ignore the
+                           # dummy top-est level node
+               visited = set()
+               for child in self._tree.values():
+                    yield from self._tree_iter(child, visited)
+               return
           # We assume that if visited is not None, then the current node is already in it
           if visited is None:
                visited = set(node)
