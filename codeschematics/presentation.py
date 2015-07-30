@@ -284,7 +284,7 @@ class Presenter:
                              node_attr={'shape': 'oval', 'color': COLOR, 'style': 'filled',
                                         'fontcolor': 'white'},
                              format=FORMAT)
-          graph.edges((node.name(), child.name()) for node in self._tree_iter())
+          graph.edges((node.name, child.name) for node in self._tree_iter())
           graph.render(filename=filename)
 
      ###########################################################################
