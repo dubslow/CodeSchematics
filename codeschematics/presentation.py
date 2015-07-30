@@ -57,6 +57,12 @@ class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > impli
      def name(self):
           return self._name
 
+     # Note: This class is comparison-by-identity only
+     __eq__ = lambda self, other: self is other
+     __ne__ = lambda self, other: self is not other
+     def __hash__(self):
+          return hash(id(self))
+
      def parents(self):
           return self._parents.items()
 
