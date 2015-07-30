@@ -33,6 +33,7 @@
 
 from collections import OrderedDict as _OrderedDict
 from copy import deepcopy as _deepcopy
+gv = None # Conditional graphviz import to minimize dependencies
 
 
 class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > implicit
@@ -259,6 +260,19 @@ class Presenter:
 
      __str__ = to_plain_text
 
+
+     def to_svg(self, filename):
+          global gv
+          if gv is None:
+               import graphviz as gv
+          FORMAT = 'svg'
+          COLOR = 'purple'
+          graph = gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
+                             node_attr={'shape': 'oval', 'color': COLOR, 'style': 'filled',
+                                        'fontcolor': 'white'},
+                             format=FORMAT)
+          graph.edges((node.name(), child.name()) for node in self._tree_iter())
+          graph.render(filename=filename)
 
      ###########################################################################
      # Now the filter methods. They return new Presenter instances, suitably
