@@ -274,18 +274,26 @@ class Presenter:
      __str__ = to_plain_text
 
 
-     def to_svg(self, filename):
+     def to_graphviz(self):
           global gv
           if gv is None:
                import graphviz as gv
-          FORMAT = 'svg'
-          COLOR = 'purple'
           graph = gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
-                             node_attr={'shape': 'oval', 'color': COLOR, 'style': 'filled',
-                                        'fontcolor': 'white'},
-                             format=FORMAT)
-          graph.edges((node.name, child.name) for node, child in self._tree_iter())
-          graph.render(filename=filename)
+                             node_attr={'shape': 'oval', 'color': 'purple', 'style': 'filled',
+                                        'fontcolor': 'white'})
+          graph.edges((node.name, func) for node in self._tree_iter() for func in node)
+          return graph
+
+     def to_png(self, filename, view=False):
+          graph = self.to_graphviz()
+          graph.format = 'png'
+          graph.render(filename=filename, view=view)
+
+     def to_svg(self, filename, view=False):
+          graph = self.to_graphviz()
+          graph.format = 'svg'
+          graph.render(filename=filename, view=view)
+
 
      ###########################################################################
      # Now the filter methods. They return new Presenter instances, suitably
