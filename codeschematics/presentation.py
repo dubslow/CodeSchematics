@@ -72,6 +72,16 @@ class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > impli
      def parents(self):
           return self._parents.items()
 
+     def tree_iter(self, visited=None):
+          '''Depth first unique traversal of the tree. The starting node isn't yielded'''
+          if visited is None:
+               visited = set()
+          for child in self.values():
+               if child not in visited:
+                    visited.add(child)
+                    yield child
+                    yield from child.tree_iter(visited)
+
      def destroy(self):
           # Destroy our childrens' references to us
           for child in self.values():
@@ -191,14 +201,14 @@ class Presenter:
 
           # As noted above, standalone loops would be marked as parented yet won't be accessible
           # Manually verify now, by traversing everything and seeing what's missing
-          visited = set(self._tree_iter())
+          visited = set(self._tree.tree_iter()) | set(self._tree)
           missing = set(func_to_node.values()) - visited
           # The hard part is figuring how many standalone loops there are in missing, and
           # which nodes should be the highest level parents
           while missing:
                new_top_level = self._find_parent(missing.pop()) # set.pop() returns an arbitrary element
                self._tree[new_top_level.name] = new_top_level
-               newly_in_tree = set(self._tree_iter(new_top_level))
+               newly_in_tree = set(new_top_level.tree_iter())
                missing -= newly_in_tree
 
           self._func_to_node = func_to_node
@@ -232,23 +242,6 @@ class Presenter:
                if parent not in visited:
                     visited.add(parent)
                     self._find_parent_(parent, visited, cur+1)
-
-     def _tree_iter(self, node=None, visited=None):
-          '''Depth first traversal of the underlying tree, only yields a given node once'''
-          if node is None: # If no node given, start from the top, being sure to ignore the
-                           # dummy top-est level node
-               visited = set()
-               for child in self._tree.values():
-                    yield from self._tree_iter(child, visited)
-               return
-          # We assume that if visited is not None, then the current node is already in it
-          if visited is None:
-               visited = set(node)
-          yield node
-          for child in node.values():
-               if child not in visited:
-                    visited.add(child)
-                    yield from self._tree_iter(child, visited)
 
 
      ###########################################################################
@@ -300,7 +293,7 @@ class Presenter:
           graph = _gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
                               node_attr={'shape': 'oval', 'color': 'purple', 'style': 'filled',
                                          'fontcolor': 'white'})
-          graph.edges((node.name, func) for node in self._tree_iter() for func in node)
+          graph.edges((node.name, func) for node in self._tree.tree_iter() for func in node)
           self.graphviz = graph
           return graph
 
