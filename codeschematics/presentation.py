@@ -33,7 +33,7 @@
 
 from collections import OrderedDict as _OrderedDict
 from copy import deepcopy as _deepcopy
-gv = None # Conditional graphviz import to minimize dependencies
+_gv = None # Conditional graphviz import to minimize dependencies
 
 
 class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > implicit
@@ -289,25 +289,47 @@ class Presenter:
 
 
      def to_graphviz(self):
-          global gv
-          if gv is None:
-               import graphviz as gv
-          graph = gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
-                             node_attr={'shape': 'oval', 'color': 'purple', 'style': 'filled',
-                                        'fontcolor': 'white'})
+          '''This converts the tree to a format usable by the graphviz library to produce images.
+          Call the graphviz_render or its related aliases to actually create the image.
+          You needn't call this function first, graphviz_render will do that for you.
+
+          The result is cached on the object in the 'graphviz' attribute.'''
+          global _gv
+          if _gv is None:
+               import graphviz as _gv
+          graph = _gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
+                              node_attr={'shape': 'oval', 'color': 'purple', 'style': 'filled',
+                                         'fontcolor': 'white'})
           graph.edges((node.name, func) for node in self._tree_iter() for func in node)
+          self.graphviz = graph
           return graph
 
-     def to_png(self, filename, view=False):
-          graph = self.to_graphviz()
-          graph.format = 'png'
-          graph.render(filename=filename, view=view)
+     def graphviz_render(self, format, filename):
+          '''Renders the tree via graphviz, writing to "{filename}.{format}"'''
+          try:
+               graph = self.graphviz
+          except AttributeError:
+               graph = self.to_graphviz()
 
-     def to_svg(self, filename, view=False):
-          graph = self.to_graphviz()
-          graph.format = 'svg'
-          graph.render(filename=filename, view=view)
+          fname = filename + '.' + format
+          with open(fname, 'wb') as f:
+               f.write(graph.pipe(format))
 
+     # A handy dandy helper to to create shorthand methods for all formats known to graphviz
+     # This is a nop if graphviz can't be imported
+     try:
+          from graphviz.files import FORMATS as _FORMATS
+     except ImportError:
+          pass
+     else:
+          for format in _FORMATS:
+               format = format.replace('.', '_').replace('-', '_') # Some formats would be syntactically invalid
+               exec(
+            '''def to_{format}(self, filename):                            \n'''
+            '''     " == graphviz_render('{format}', filename)"         \n'''
+            '''     return self.graphviz_render('{format}', filename)   \n'''
+               .format(format=format) # Kappa
+               )
 
      ###########################################################################
      # Now the filter methods. They return new Presenter instances, suitably

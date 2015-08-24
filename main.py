@@ -15,5 +15,5 @@ dic, nested = make_call_dict(fname) # Ignore the nested funcs retval =
 tree = Presenter(dic)
 
 fname = basename(fname)
-tree.default_filter()
-tree.to_png(fname)
+tree = tree.default_filter()
+tree.to_svg(fname)
