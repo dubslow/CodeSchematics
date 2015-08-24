@@ -49,9 +49,15 @@ class _Tree(_OrderedDict): # The auto-vivifaction was cool, but explicit > impli
 
      def __setitem__(self, key, value):
           if not isinstance(value, self.__class__):
-               raise TypeError("{} child values can only be other instances of {}".format(*([self.__class__]*2)))
+               raise TypeError("{0} child values can only be other instances of {0}".format(self.__class__))
           super().__setitem__(key, value)
           value._parents[self._name] = self
+
+     def __reduce_ex__(self, protocol):
+          ret = list(super().__reduce_ex__(protocol))
+          # The ret[0] is the class/constructor, ret[1] are its args, see pickle docs
+          ret[1] = (self.name,) # Even if it wasn't an empty tuple, I can't really handle what it may have been
+          return tuple(ret)
 
      @property
      def name(self):
@@ -92,9 +98,12 @@ class Presenter:
         These filtered Presenters have all the same "view" methods as the "full" original,
         and calling them will produce the requested view."""
 
+     # Current data attributes: _data, _tree, and _func_to_node
 
      ###########################################################################
      # Used for creating copies for the filter methods
+
+     # _copy copies from other to self. This should really only be called during construction/initialization
      def _copy(self, other):
           self._data = other._data.copy()
           self._tree = _deepcopy(other._tree)
@@ -113,6 +122,11 @@ class Presenter:
                     if child.keys():
                          self._recreate_func_to_node(child)
 
+     def deepcopy(self):
+          '''Returns a deep copy of the tree, so that you may leave self intact while
+          futzing with a duplicate'''
+          # Thin wrapper to _copy
+          return self.__class__(self)
 
      ###########################################################################
 
@@ -298,12 +312,14 @@ class Presenter:
      ###########################################################################
      # Now the filter methods. They return new Presenter instances, suitably
      # modified.
+     #
+     # The public methods return the modified version, leaving self intact (i.e. immuatable)
+     # The private _methods are in place, and violate immutability
 
      def default_filter(self):
           """This creates a copy of this Presenter instance, except all functions
              lacking a "definition" are deleted from the call tree."""
-          out = self.__class__(self) # __init__ recognizes its own instances, and copies
-                                     # all `self` data to `out` (leaving self intact)
+          out = self.deepcopy()
           out._default_filter()
           return out
 
