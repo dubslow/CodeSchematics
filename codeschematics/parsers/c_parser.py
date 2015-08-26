@@ -24,10 +24,24 @@ produce a list of defined functions and their subcalls suitable for passing
 to the codeschematics.presentation module.'''
 
 from __future__ import print_function
-from pycparser import c_ast, parse_file
+
+from pycparser import c_ast, preprocess_file, parse_file as _parse_file
 from codeschematics.parsers.parser_data import ParserData
 
-class CParser(c_ast.NodeVisitor):
+try:
+     from pycparserext.ext_c_parser import GnuCParser
+except ImportError:
+     from warnings import ImportWarning
+     raise ImportWarning("pycparserext not found, falling back to pycparser (likely to fail)")
+     parse_file = _parse_file
+else:
+     from functools import partial as _partial
+     parser = GnuCParser()
+     parse_file = _partial(_parse_file, parser=parser)
+# Basically parse_file should dynamically use GnuCParser when available, or
+# silently fallback if not
+
+class CTraverser(c_ast.NodeVisitor):
 
      top_level = '__file__' # The fake name for containing-function of 
                             # top level function calls
@@ -48,14 +62,13 @@ class CParser(c_ast.NodeVisitor):
           dictionary and nested functions set (as a tuple).'''
           return self._data.result()
 
-
 def make_call_dict(filename):
      '''This parses the given file into an AST, then traverses the AST to create
      the function definition list. The return value is a tuple of
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
      functions that aren't defined at top level in the module.'''
      tree = parse_file(filename, use_cpp=True)
-     parser = CParser()
+     visitor = CTraverser()
      #print('starting traversal')
-     parser.visit(tree)
-     return parser.result()
+     visitor.visit(tree)
+     return visitor.result()

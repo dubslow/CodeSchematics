@@ -33,7 +33,7 @@ from codeschematics.parsers.parser_data import ParserData
 
 # Note: Add class name to methods, and also catch attribute calls
 # Note2: Make the former configurable
-class PythonParser(ast.NodeVisitor):
+class PythonTraverser(ast.NodeVisitor):
 
      top_level = '__module__' # The fake name for containing-function of 
                             # top level function calls
@@ -89,7 +89,7 @@ def make_call_dict(filename):
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
      functions that aren't defined at top level in the module.'''
      tree = parse_file(filename)
-     parser = PythonParser()
+     visitor = PythonTraverser()
      #print('starting traversal')
-     parser.visit(tree)
-     return parser.result()
+     visitor.visit(tree)
+     return visitor.result()
