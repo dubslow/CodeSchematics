@@ -36,6 +36,8 @@ from collections import OrderedDict
 # An incomplete implementation that only does what I need it to, namely
 # append things to it and iterate off it
 # So most set methods are unimplemented
+# And since it's fundamentally a list, and not hashable, insertion performance may be O(n^2)
+# Perhaps a better name would be UniqueList
 class OrderedSet(list):
 
      def __init__(self, *a, **kw):
@@ -49,6 +51,7 @@ class OrderedSet(list):
 
 ################################################################################
 # Python source --> reduced func-call-tree code
+
 class Data:
      def __init__(self, dic=None):
           self.dict = OrderedDict()
@@ -57,7 +60,7 @@ class Data:
 
 # Note: Add class name to methods, and also catch attribute calls
 # Note2: Make the former configurable
-class Parser(ast.NodeVisitor):
+class FunctionParser(ast.NodeVisitor):
 
      top_level = '__module__' # The fake name for containing-function of 
                             # top level function calls
@@ -126,7 +129,7 @@ class Parser(ast.NodeVisitor):
           self.generic_visit(node)
 
 
-def parse(filename):
+def parse_file(filename):
      '''This parses the given file into an abstract syntax tree'''
      with open(filename) as f:
           return ast.parse(f.read(), filename)
@@ -137,8 +140,8 @@ def make_call_dict(filename):
      the function definition list. The return value is a tuple of
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
      functions that aren't defined at top level in the module.'''
-     tree = parse(filename)
-     parser = Parser()
+     tree = parse_file(filename)
+     parser = FunctionParser()
      #print('starting traversal')
      parser.visit(tree)
      return parser.data.dict, parser.data.nested_funcs
