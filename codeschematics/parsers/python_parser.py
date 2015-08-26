@@ -24,52 +24,21 @@
 
 '''This module uses the builtin Python ast module to parse a given filename and
 produce a list of function definitions and their subcalls suitable for passing
-to the presentation module.'''
-
+to the presentation module. It builds on the parser/language agnostic ParserData
+class, which encapsulates the logic required for this package.'''
 
 from __future__ import print_function
 import ast
-import json
-from collections import OrderedDict
-
-
-# An incomplete implementation that only does what I need it to, namely
-# append things to it and iterate off it
-# So most set methods are unimplemented
-# And since it's fundamentally a list, and not hashable, insertion performance may be O(n^2)
-# Perhaps a better name would be UniqueList
-class OrderedSet(list):
-
-     def __init__(self, *a, **kw):
-          super(self.__class__, self).__init__(*a, **kw)
-     
-     def append(self, thing):
-          if thing not in self:
-               super(self.__class__, self).append(thing)
-     
-     add = append
-
-################################################################################
-# Python source --> reduced func-call-tree code
-
-class Data:
-     def __init__(self, dic=None):
-          self.dict = OrderedDict()
-          if dic: self.dict.update(dic)
-          self.nested_funcs = set()
+from codeschematics.parsers.parser_data import ParserData
 
 # Note: Add class name to methods, and also catch attribute calls
 # Note2: Make the former configurable
-class FunctionParser(ast.NodeVisitor):
+class PythonParser(ast.NodeVisitor):
 
      top_level = '__module__' # The fake name for containing-function of 
                             # top level function calls
      def __init__(self):
-          self.data = Data()
-          self.data.dict[self.top_level] = OrderedSet()
-          self.current_func = self.top_level 
-                              # Whatever function whose code we are walking through
-               
+          self._data = ParserData(self.top_level)
 
      def _generic_visit(self, thing): 
           # Like super's visit, except also accepts the list "nodes" as well
@@ -84,34 +53,8 @@ class FunctionParser(ast.NodeVisitor):
           elif isinstance(thing, ast.AST):
                self.visit(thing)
 
-     def uniquify(self, name):
-          # This is guaranteed to work for some i, because '.' is disallowed
-          # in Python identifiers
-          template = name + ".{}"
-          i = 1
-          out = template.format(i)
-          while out in self.data.dict.keys():
-               i += 1
-               out = template.format(i)
-          return out
-
-
      def visit_FunctionDef(self, node):
-          #print('visiting function def', node.name)
-          if node.name in self.data.dict.keys():
-               name = self.uniquify(node.name)
-          else:
-               name = node.name
-          self.data.dict[name] = OrderedSet()
-          
-          if self.current_func != self.top_level:
-               self.data.nested_funcs.add(name)
-          
-          old = self.current_func
-          self.current_func = name
-          self._generic_visit(node.body)
-          self.current_func = old
-
+          self._data.parse_func(node.name, self._generic_visit, node.body)
 
      def visit_Call(self, node):
           # A function's "name" need not be an identifier, e.g. 
@@ -120,13 +63,18 @@ class FunctionParser(ast.NodeVisitor):
           # For now, if this is the case, then ignore this node
           #print('visiting call node inside function', self.current_func)
           if isinstance(node.func, ast.Name): # simple call by identifier
-               self.data.dict[self.current_func].add(node.func.id)
+               self._data.func_called(node.func.id)
                #print(self.current_func, node.func.id)
           elif isinstance(node.func, ast.Attribute): # call by attribute
-               self.data.dict[self.current_func].add(node.func.attr)
+               self._data.func_called(node.func.attr)
                # For now, we ignore whatever object(s) whose attr is the func
                # ignore(node.func.value)            
           self.generic_visit(node)
+
+     def result(self):
+          '''After parsing is complete, call this to get the function->subcalls
+          dictionary and nested functions set (as a tuple).'''
+          return self._data.result()
 
 
 def parse_file(filename):
@@ -141,7 +89,7 @@ def make_call_dict(filename):
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
      functions that aren't defined at top level in the module.'''
      tree = parse_file(filename)
-     parser = FunctionParser()
+     parser = PythonParser()
      #print('starting traversal')
      parser.visit(tree)
-     return parser.data.dict, parser.data.nested_funcs
+     return parser.result()
