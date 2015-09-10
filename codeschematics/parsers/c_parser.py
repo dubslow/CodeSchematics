@@ -31,8 +31,8 @@ from codeschematics.parsers.parser_data import ParserData
 try:
      from pycparserext.ext_c_parser import GnuCParser
 except ImportError:
-     from warnings import ImportWarning
-     raise ImportWarning("pycparserext not found, falling back to pycparser (likely to fail)")
+     import warnings
+     warnings.warn("pycparserext not found, falling back to pycparser (likely to fail)", ImportWarning)
      parse_file = _parse_file
 else:
      from functools import partial as _partial
@@ -62,12 +62,21 @@ class CTraverser(c_ast.NodeVisitor):
           dictionary and nested functions set (as a tuple).'''
           return self._data.result()
 
-def make_call_dict(filename):
+from codeschematics.parsers.fake_libc_include import find_fake_libc_include
+# http://eli.thegreenplace.net/2015/on-parsing-c-type-declarations-and-fake-headers/
+
+def make_call_dict(filename, include_dirs=None):
      '''This parses the given file into an AST, then traverses the AST to create
      the function definition list. The return value is a tuple of
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
      functions that aren't defined at top level in the module.'''
-     tree = parse_file(filename, use_cpp=True)
+     cpp_args = []
+     dname = find_fake_libc_include()
+     if dname:
+          cpp_args += ['-nostdinc', "-I{}".format(dname)]
+     if include_dirs:
+          cpp_args += ["-I{}".format(idir) for idir in include_dirs]
+     tree = parse_file(filename, use_cpp=True, cpp_args=cpp_args if cpp_args else '')
      visitor = CTraverser()
      #print('starting traversal')
      visitor.visit(tree)
