@@ -65,17 +65,29 @@ class CTraverser(c_ast.NodeVisitor):
 from codeschematics.parsers.fake_libc_include import find_fake_libc_include
 # http://eli.thegreenplace.net/2015/on-parsing-c-type-declarations-and-fake-headers/
 
-def make_call_dict(filename, include_dirs=None):
+def make_call_dict(filename, include_dirs=None, defines=None, *, nostdinc=False):
      '''This parses the given file into an AST, then traverses the AST to create
      the function definition list. The return value is a tuple of
      (function_def_dict, set_of_nested_funcs), where the latter is the set of
-     functions that aren't defined at top level in the module.'''
+     functions that aren't defined at top level in the module.
+
+     This C version of this function passes the given include_dirs and defines
+     to the pre-processor; they are merely prefixed with '-I' and '-D' manually,
+     and so must be shell-quoted.
+
+     Additionally, if the package can't locate pycparser's fake_libc_include
+     files on your system, you will have to pass them to include_dirs, as well
+     as set the keyword 'nostdinc' to True.'''
      cpp_args = []
      dname = find_fake_libc_include()
      if dname:
           cpp_args += ['-nostdinc', "-I{}".format(dname)]
+     elif nostdinc:
+          cpp_args += ['-nostdinc']
      if include_dirs:
           cpp_args += ["-I{}".format(idir) for idir in include_dirs]
+     if defines:
+          cpp_args += ["-D{}".format(define) for define in defines]
      tree = parse_file(filename, use_cpp=True, cpp_args=cpp_args if cpp_args else '')
      visitor = CTraverser()
      #print('starting traversal')

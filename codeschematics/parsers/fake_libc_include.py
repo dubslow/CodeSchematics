@@ -18,17 +18,25 @@
 
 # For now, we only have Linux system commands
 
-from subprocess import check_output
+from subprocess import check_output, SubprocessError
 
 def find_fake_libc_include():
-     lines = check_output(['locate', '-r', '/fake_libc_include$'], universal_newlines=True)
-     if not lines:
-          print('Warning: "find"ing the whole filesystem for fake includes. Best stop this and pass the'
-                ' location manually or run `sudo updatedb`')
-          lines = check_output(['find', '/', '-type', 'd', '-name', "'fake_libc_include'"], universal_newlines=True)
-     lines = lines.splitlines()
-     if len(lines) > 1:
-          print('Got more than one result, using the first:')
-          print(lines)
-     line = lines[0]
-     return line.strip()
+     # I know that catch-all try statements are bad practice, but... it's basically
+     # what I want here
+     try:
+          lines = check_output(['locate', '-r', '/fake_libc_include$'], universal_newlines=True)
+          if not lines:
+               print('Warning: "find"ing the whole filesystem for fake includes. Best stop this and pass the'
+                     ' location manually or run `sudo updatedb`')
+               lines = check_output(['find', '/', '-type', 'd', '-name', "'fake_libc_include'"], universal_newlines=True)
+     except SubprocessError as e:
+          print('System commands to find the fake libc includes failed (probably because Linux only).'
+                " Pass in the folder's location manually.")
+          return None
+     else:
+          lines = lines.splitlines()
+          if len(lines) > 1:
+               print('Got more than one result, using the first:')
+               print(lines)
+          line = lines[0]
+          return line.strip()
