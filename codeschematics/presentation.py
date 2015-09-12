@@ -148,10 +148,10 @@ class Presenter:
           # For development at least, type check the input
           for func, calls in data.items():
                if not isinstance(func, str):
-                    raise TypeError("function names should be strings")
+                    raise TypeError("function names should be strings (got {}: {} instead)".format(func, type(func)))
                for call in calls:
                     if not isinstance(call, str):
-                         raise TypeError("function body calls should be strings")
+                         raise TypeError("function body calls should be strings (got {}: {} instead)".format(call, type(call)))
                     if calls.count(call) > 1:
                          raise ValueError("function {} has duplicate entries for {}".format(func, call))
 
