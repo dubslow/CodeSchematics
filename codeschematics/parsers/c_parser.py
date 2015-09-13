@@ -54,8 +54,37 @@ class CTraverser(c_ast.NodeVisitor):
           self._data.parse_func(node.decl.name, self.generic_visit, node)
 
      def visit_FuncCall(self, node):
-          self._data.func_called(node.name.name)            
+          name = node.name
+          if isinstance(name, c_ast.ID):
+               self._data.func_called(node.name.name)
+          else:
+               # The next most common case is struct reference, as e.g. for a stored callback.
+               # So isinstance(name, c_ast.StructRef) == True, and `name` has two c_ast.ID
+               # children (like a->b). To try and handle more general cases than just a
+               # StructRef, we find the textually-latest c_ast.ID node -- i.e. the one
+               # furthest down the AST. This should be the text directly left of the
+               # opening paren of the function call. Delegate to the helper function for clarity.
+               # For example: if our call looks like:
+               #
+               # val = structptr1->child1.callback(args);
+               #
+               # Then 'structptr1', 'child1', and 'callback' will all appear as c_ast.ID nodes
+               # somewhere in `name.children()`. We want the textually latest, i.e. rightmost
+               # name -- 'callback' -- and use that as the "name" of the function.
+               retval = self._find_furthest_node(name, c_ast.ID)
+               if retval is None:
+                    raise ValueError('Got a function call with no ID node')
+               self._data.func_called(retval.name)
+
           self.generic_visit(node)
+
+     def _find_furthest_node(self, startnode, cls):
+          for attr, value in reversed(startnode.children()):
+               if isinstance(value, cls):
+                    return value
+               else:
+                    self._find_furthest_node(value, cls)
+          return None
 
      def result(self):
           '''After parsing is complete, call this to get the function->subcalls
