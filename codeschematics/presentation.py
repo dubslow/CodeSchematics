@@ -293,7 +293,11 @@ class Presenter:
           graph = _gv.Digraph(graph_attr={'labelloc': 't', 'labelfontsize': '20'},
                               node_attr={'shape': 'oval', 'color': 'purple', 'style': 'filled',
                                          'fontcolor': 'white'})
-          graph.edges((node.name, func) for node in self._tree.tree_iter() for func in node)
+          for node in self._tree.tree_iter():
+               if node.keys():
+                    graph.edges((node.name, func) for func in node)
+               else:
+                    graph.node(node.name)
           self.graphviz = graph
           return graph
 
